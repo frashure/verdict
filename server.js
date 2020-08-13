@@ -76,6 +76,8 @@ passport.deserializeUser((id, done) => {
 
 const usersRoutes = require('./routes/userRoutes');
 app.use('/users', usersRoutes);
+const candidateRoutes = require('./routes/candidateRoutes');
+app.use('/candidates', candidateRoutes);
 
 app.listen(port, () => {
     console.log(`Verdict app listening on port ${port}`);
