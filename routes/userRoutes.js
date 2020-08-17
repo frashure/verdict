@@ -1,14 +1,22 @@
 const express = require('express');
 const router = express.Router();
 const passport = require('passport');
-
 const controller = require('../controllers/usersController');
 
 router.route('/')
     .get(isLoggedIn, controller.getUser)
     .post(controller.createUser);
 router.route('/login')
-    .post(passport.authenticate('local'), controller.loginUser);
+    .post(passport.authenticate('local'), controller.loginUser)
+router.route('/relationships')
+    .get(isLoggedIn, controller.getFriends)
+    .post(isLoggedIn, controller.addRelationship);
+// router.route('/relationships/friends')
+//     .get(isLoggedIn)
+router.route('/endorsements')
+    .get(isLoggedIn, controller.getUserEndorsements)
+    .post(isLoggedIn, controller.addUserEndorsement)
+    .delete(isLoggedIn, controller.removeUserEndorsement)
 
 function isLoggedIn (req, res, next) {
     if (req.isAuthenticated()) {
