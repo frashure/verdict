@@ -1,6 +1,7 @@
 const bcrypt = require('bcrypt');
 const db = require('../lib/db');
-const { json } = require('body-parser');
+// const { json } = require('body-parser');
+const fetch = require('node-fetch');
 
 const controller = {
 
@@ -84,6 +85,89 @@ const controller = {
 
     postUser: (req, res) => {
         res.send("postUser route succeeded!");
+    },
+
+    getUserDistricts: async (req, res) => {
+
+        let url = 'https://www.googleapis.com/civicinfo/v2/representatives?address=' + req.body.address + '&key=' + process.env.civic_key;
+
+        var countyPattern = /ocd-division\/country:us$/
+        var statePattern = /ocd-division\/country:us\/state:(\D{2}$)/;
+        var cdPattern = /ocd-division\/country:us\/state:va\/cd:/;
+        var housePattern = /ocd-division\/country:us\/state:\D{2}\/sldl:/;
+        var senatePattern = /ocd-division\/country:us\/state:\D{2}\/sldu:/;
+
+        fetch(url, {headers: {'Content-Type': 'application/json'}})
+            .then(response => response.json())
+            .then(data => {
+                let divisions = Object.keys(data.divisions);
+
+                var countryPattern = /ocd-division\/country:us$/
+                var statePattern = /ocd-division\/country:us\/state:(\D{2}$)/;
+                var cdPattern = /ocd-division\/country:us\/state:va\/cd:/;
+                var housePattern = /ocd-division\/country:us\/state:va\/sldl:/;
+                var senatePattern = /ocd-division\/country:us\/state:va\/sldu:/;
+
+                var districts = {}
+
+                for (let i = 0; i < divisions.length; i++) {
+
+                    console.log[i];
+                    console.log('Current line: ' + divisions[i]);
+                    if (divisions[i].match(statePattern) !== null) {
+                        districts.state = divisions[i].match(/ocd-division\/country:us\/state:(\D{2}$)/)[1];
+                        console.log('Object state: ' + districts.state);
+                        continue;
+                    }
+                    else if (divisions[i].match(cdPattern) !== null) {
+                        districts.cd = divisions[i].match(/ocd-division\/country:us\/state:va\/cd:(.*)/)[1];
+                        console.log('Object cd: ' + districts.cd);
+                        continue;
+                    }
+                    else if (divisions[i].match(housePattern) !== null) {
+                        districts.stateLower = divisions[i].match(/ocd-division\/country:us\/state:va\/sldl:(.*)/)[1];
+                        console.log('Object lower: ' + districts.stateLower);
+                        continue;
+                    }
+                    else if (divisions[i].match(senatePattern) !== null) {
+                        districts.stateUpper = divisions[i].match(/ocd-division\/country:us\/state:va\/sldu:(.*)/)[1];
+                        console.log('Object upper: ' + districts.stateUpper);
+                    }
+                }
+
+                db.query('insert into user_districts (user_id, legislature_id, district)' +
+                'select' +
+                    '?,' +
+                    'legislature_id,' +
+                    'case' +
+                        'when l.fed_state = \'f\' and l.upper_lower = \'l\' then ?' +
+                        'when l.fed_state = \'s\' and l.upper_lower = \'u\' then ?' + 
+                        'when l.fed_state = \'s\' and l.upper_lower = \'l\' then ?' +
+                        'else null' +
+                    'end' +
+                'from legislatures l' +
+                'where state = ? or state = \'US\'', [req.user.is, districts.cd, districts.stateUpper, districts.stateLower], (err, results) => {
+                    if (err) {
+                        console.log(err);
+                        throw err;
+                    }
+                    else {
+                        console.log(results.affectedRows);
+                        res.send(200);
+                    }
+                })
+
+                res.sendStatus(200);
+
+            })
+            .catch((e) => {
+                console.log('Error: ' + e.message);
+                res.sendStatus(404);
+            });
+    },
+
+    getFriends: (req, res) => {
+        res.sendStatus(200);
     },
 
     getUserEndorsements: (req, res) => {

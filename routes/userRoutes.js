@@ -17,6 +17,8 @@ router.route('/endorsements')
     .get(isLoggedIn, controller.getUserEndorsements)
     .post(isLoggedIn, controller.addUserEndorsement)
     .delete(isLoggedIn, controller.removeUserEndorsement)
+router.route('/districts')
+    .get(controller.getUserDistricts);
 
 function isLoggedIn (req, res, next) {
     if (req.isAuthenticated()) {
