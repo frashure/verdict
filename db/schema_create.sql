@@ -21,7 +21,7 @@ USE `verdict` ;
 DROP TABLE IF EXISTS `verdict`.`parties` ;
 
 CREATE TABLE IF NOT EXISTS `verdict`.`parties` (
-  `party_id` INT NOT NULL,
+  `party_id` VARCHAR(5) NOT NULL,
   `name` VARCHAR(45) NOT NULL,
   `website` VARCHAR(45) NULL,
   PRIMARY KEY (`party_id`),
@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS `verdict`.`candidates` (
   `candidate_id` INT NOT NULL AUTO_INCREMENT,
   `first_name` VARCHAR(45) NOT NULL,
   `last_name` VARCHAR(45) NOT NULL,
-  `party` INT NOT NULL,
+  `party` VARCHAR(5) NOT NULL,
   PRIMARY KEY (`candidate_id`),
   UNIQUE INDEX `candidate_id_UNIQUE` (`candidate_id` ASC) VISIBLE,
   INDEX `fk_candidates_parties1_idx` (`party` ASC) VISIBLE,
@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS `verdict`.`users` (
   `last_name` VARCHAR(45) NOT NULL,
   `email` VARCHAR(45) NOT NULL,
   `password` VARCHAR(255) NOT NULL,
-  `party` INT NOT NULL,
+  `party` VARCHAR(5) NULL,
   PRIMARY KEY (`user_id`),
   UNIQUE INDEX `user_id_UNIQUE` (`user_id` ASC) VISIBLE,
   UNIQUE INDEX `email_UNIQUE` (`email` ASC) VISIBLE,
@@ -81,7 +81,7 @@ ENGINE = InnoDB;
 DROP TABLE IF EXISTS `verdict`.`party_members` ;
 
 CREATE TABLE IF NOT EXISTS `verdict`.`party_members` (
-  `party_id` INT NOT NULL,
+  `party_id` VARCHAR(5) NOT NULL,
   `candidate_id` INT NOT NULL,
   `user_id` INT NOT NULL,
   PRIMARY KEY (`party_id`),
@@ -133,7 +133,7 @@ CREATE TABLE IF NOT EXISTS `verdict`.`elections` (
   `election_date` DATE NULL,
   `legislature_id` INT NOT NULL,
   `district` INT NULL,
-  `party_id` INT NULL,
+  `party_id` VARCHAR(5) NULL,
   PRIMARY KEY (`election_id`),
   UNIQUE INDEX `election_id_UNIQUE` (`election_id` ASC) VISIBLE,
   INDEX `fk_elections_legislatures1_idx` (`legislature_id` ASC) VISIBLE,
@@ -205,11 +205,11 @@ DROP TABLE IF EXISTS `verdict`.`endorsements` ;
 CREATE TABLE IF NOT EXISTS `verdict`.`endorsements` (
   `user_id` INT NOT NULL,
   `candidate_id` INT NOT NULL,
-  `elections_election_id` INT NOT NULL,
-  `date_endorsed` DATE NOT NULL,
-  PRIMARY KEY (`user_id`, `candidate_id`, `elections_election_id`),
+  `election_id` INT NOT NULL,
+  `date_endorsed` DATE NOT NULL DEFAULT (CURRENT_DATE),
+  PRIMARY KEY (`user_id`, `candidate_id`, `election_id`),
   INDEX `fk_endorsements_candidates1_idx` (`candidate_id` ASC) VISIBLE,
-  INDEX `fk_endorsements_elections1_idx` (`elections_election_id` ASC) VISIBLE,
+  INDEX `fk_endorsements_elections1_idx` (`election_id` ASC) VISIBLE,
   CONSTRAINT `fk_endorsements_users1`
     FOREIGN KEY (`user_id`)
     REFERENCES `verdict`.`users` (`user_id`)
@@ -221,7 +221,7 @@ CREATE TABLE IF NOT EXISTS `verdict`.`endorsements` (
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
   CONSTRAINT `fk_endorsements_elections1`
-    FOREIGN KEY (`elections_election_id`)
+    FOREIGN KEY (`election_id`)
     REFERENCES `verdict`.`elections` (`election_id`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
@@ -237,7 +237,7 @@ CREATE TABLE IF NOT EXISTS `verdict`.`user_relationships` (
   `user1` INT NOT NULL,
   `user2` INT NOT NULL,
   `type` VARCHAR(45) NOT NULL,
-  `dateAdded` DATE GENERATED ALWAYS AS (),
+  `dateAdded` DATE NOT NULL DEFAULT (CURRENT_DATE),
   PRIMARY KEY (`user1`, `user2`),
   INDEX `fk_userRelationships_users2_idx` (`user2` ASC) VISIBLE,
   CONSTRAINT `fk_userRelationships_users1`
@@ -310,9 +310,9 @@ SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;
 -- -----------------------------------------------------
 START TRANSACTION;
 USE `verdict`;
-INSERT INTO `verdict`.`parties` (`party_id`, `name`, `website`) VALUES (rep, 'Republican', NULL);
-INSERT INTO `verdict`.`parties` (`party_id`, `name`, `website`) VALUES (dem, 'Democratic', NULL);
-INSERT INTO `verdict`.`parties` (`party_id`, `name`, `website`) VALUES (lib, 'Libertarian', NULL);
+INSERT INTO `verdict`.`parties` (`party_id`, `name`, `website`) VALUES ('rep', 'Republican', NULL);
+INSERT INTO `verdict`.`parties` (`party_id`, `name`, `website`) VALUES ('dem', 'Democratic', NULL);
+INSERT INTO `verdict`.`parties` (`party_id`, `name`, `website`) VALUES ('lib', 'Libertarian', NULL);
 
 COMMIT;
 
@@ -322,9 +322,9 @@ COMMIT;
 -- -----------------------------------------------------
 START TRANSACTION;
 USE `verdict`;
-INSERT INTO `verdict`.`candidates` (`candidate_id`, `first_name`, `last_name`, `party`) VALUES (1, 'Jo', 'Jorgensen', lib);
-INSERT INTO `verdict`.`candidates` (`candidate_id`, `first_name`, `last_name`, `party`) VALUES (2, 'Donald', 'Trump', rep);
-INSERT INTO `verdict`.`candidates` (`candidate_id`, `first_name`, `last_name`, `party`) VALUES (3, 'Joe', 'Biden', dem);
+INSERT INTO `verdict`.`candidates` (`candidate_id`, `first_name`, `last_name`, `party`) VALUES (1, 'Jo', 'Jorgensen', 'lib');
+INSERT INTO `verdict`.`candidates` (`candidate_id`, `first_name`, `last_name`, `party`) VALUES (2, 'Donald', 'Trump', 'rep');
+INSERT INTO `verdict`.`candidates` (`candidate_id`, `first_name`, `last_name`, `party`) VALUES (3, 'Joe', 'Biden', 'dem');
 
 COMMIT;
 
@@ -346,7 +346,7 @@ COMMIT;
 -- -----------------------------------------------------
 START TRANSACTION;
 USE `verdict`;
-INSERT INTO `verdict`.`elections` (`election_id`, `election_type`, `election_date`, `legislature_id`, `district`, `party_id`) VALUES (1, 'g', '11-03-2020', 1, NULL, NULL);
+INSERT INTO `verdict`.`elections` (`election_id`, `election_type`, `election_date`, `legislature_id`, `district`, `party_id`) VALUES (1, 'g', '2020-11-03', 1, NULL, NULL);
 
 COMMIT;
 
@@ -371,8 +371,8 @@ DROP TRIGGER IF EXISTS `verdict`.`candidates_add_party_member` $$
 USE `verdict`$$
 CREATE DEFINER = CURRENT_USER TRIGGER `verdict`.`candidates_add_party_member` AFTER INSERT ON `candidates` FOR EACH ROW
 BEGIN
-	IF (NEW.party_id IS NOT NULL) THEN
-		INSERT INTO party_members (party_id, candidate_id) values (NEW.party_id, NEW.candidate_id);
+	IF (NEW.party IS NOT NULL) THEN
+		INSERT INTO party_members (party_id, candidate_id) values (NEW.party, NEW.candidate_id);
     END IF;
 END$$
 

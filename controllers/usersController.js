@@ -32,7 +32,7 @@ const controller = {
                         throw err;
                     }
                     else {
-                        db.query('insert into users (username, email, password) values (?, ?, ?)', [username, email, hash], (err, results) => {
+                        db.query('insert into users (email, password, first_name, last_name) values (?, ?, ?, ?)', [email, hash, req.body.firstName, req.body.lastName], (err, results) => {
                             if (err) {
                                 console.log('Insert query error: ' + err);
                                 let error = {
@@ -44,11 +44,11 @@ const controller = {
                                 console.log('Inserted ID: ' + results.insertId);
                                 userID = results.insertId;
                                 user = {
-                                    id: userID,
-                                    name: username
+                                    id: userID
                                 }
                                 req.login(user, (err) => {
                                     if (err) {
+                                        console.log('User: ' + user)
                                         console.log('Login error: ' + err);
                                         res.status(500).json(err);
                                     }
@@ -70,9 +70,15 @@ const controller = {
         res.sendStatus(200);
     },
 
+
+    logoutUser: (req, res) => {
+        req.logout();
+        res.sendStatus(200);
+    },
+
     getUser: (req, res) => {
         console.log('User: ' + JSON.stringify(req.user));
-        db.query('select username, email from users where id = ?', [req.user.id], (err, results) => {
+        db.query('select username, email from users where user_id = ?', [req.user.user_id], (err, results) => {
             if (err) {
                 console.log(err);
                 throw err;
@@ -87,7 +93,7 @@ const controller = {
         res.send("postUser route succeeded!");
     },
 
-    getUserDistricts: async (req, res) => {
+    getUserDistricts: (req, res) => {
 
         let url = 'https://www.googleapis.com/civicinfo/v2/representatives?address=' + req.body.address + '&key=' + process.env.civic_key;
 
@@ -136,29 +142,28 @@ const controller = {
                 }
 
                 db.query('insert into user_districts (user_id, legislature_id, district)' +
-                'select' +
-                    '?,' +
-                    'legislature_id,' +
-                    'case' +
-                        'when l.fed_state = \'f\' and l.upper_lower = \'l\' then ?' +
-                        'when l.fed_state = \'s\' and l.upper_lower = \'u\' then ?' + 
-                        'when l.fed_state = \'s\' and l.upper_lower = \'l\' then ?' +
-                        'else null' +
-                    'end' +
-                'from legislatures l' +
-                'where state = ? or state = \'US\'', [req.user.is, districts.cd, districts.stateUpper, districts.stateLower], (err, results) => {
-                    if (err) {
-                        console.log(err);
-                        throw err;
-                    }
-                    else {
-                        console.log(results.affectedRows);
-                        res.send(200);
-                    }
-                })
-
-                res.sendStatus(200);
-
+                    'select ' +
+                        '?, ' +
+                        'legislature_id, ' +
+                        'case ' +
+                            'when l.fed_state = \'f\' and l.upper_lower = \'l\' then ? ' +
+                            'when l.fed_state = \'s\' and l.upper_lower = \'u\' then ? ' + 
+                            'when l.fed_state = \'s\' and l.upper_lower = \'l\' then ? ' +
+                            'else null ' +
+                        'end ' +
+                    'from legislatures l ' +
+                    'where state = ? or state = \'US\'',
+                    [req.user.user_id, districts.cd, districts.stateUpper, districts.stateLower, districts.state], (err, results) => {
+                        if (err) {
+                            console.log(req.user);
+                            console.log(err);
+                            throw err;
+                        }
+                        else {
+                            console.log(results.affectedRows);
+                            res.send(200);
+                        }
+                    })
             })
             .catch((e) => {
                 console.log('Error: ' + e.message);
@@ -166,12 +171,20 @@ const controller = {
             });
     },
 
-    getFriends: (req, res) => {
-        res.sendStatus(200);
+    getUserRelationships: (req, res) => {
+        db.query('select * from user_relationships where user1 = ?', [req.user.user_id], (err, results) => {
+            if (err) {
+                console.log(err);
+                throw err;
+            }
+            else {
+                res.status(200).json(results);
+            }
+        })
     },
 
     getUserEndorsements: (req, res) => {
-        db.query('select c.* from endorsements e join candidates c where e.user_id = ?', [req.user.id], (err, results) => {
+        db.query('select c.* from endorsements e join candidates c on e.candidate_id = c.candidate_id where e.user_id = ?', [req.user.user_id], (err, results) => {
             if (err) {
                 console.log(err);
                 throw err;
@@ -183,7 +196,7 @@ const controller = {
     },
 
     addUserEndorsement: (req, res) => {
-        db.query('insert into endorsements (user_id, candidate_id, election_id) values (?, ?, ?)', [req.user.id, req.body.candidateId, req.body.electionId], (err, results) => {
+        db.query('insert into endorsements (user_id, candidate_id, election_id) values (?, ?, ?)', [req.user.user_id, req.body.candidateId, req.body.electionId], (err, results) => {
             if (err) {
                 console.log(err);
                 throw err;
@@ -196,7 +209,7 @@ const controller = {
     },
 
     removeUserEndorsement: (req, res) => {
-        db.query('delete from endorsements where concat(user_id, candidate_id, election_id) = concat(?, ?, ?)', [req.user.id, req.body.candidateId, req.body.electionId], (err, results) => {
+        db.query('delete from endorsements where concat(user_id, candidate_id, election_id) = concat(?, ?, ?)', [req.user.user_id, req.body.candidateId, req.body.electionId], (err, results) => {
             if (err) {
                 console.log(err);
                 throw err;
@@ -209,7 +222,7 @@ const controller = {
     },
 
     getRelationships: (req, res) => {
-        db.query('select user2 from userRelationships where user1 = ?', [req.user.id], (err, results) => {
+        db.query('select user2 from userRelationships where user1 = ?', [req.user.user_id], (err, results) => {
             if (err) {
                 console.log(err);
                 throw err;
@@ -220,8 +233,8 @@ const controller = {
         })
     },
 
-    addRelationship: (req, res) => {
-        db.query('insert into user_relationships (user1, user2, type) values (?, ?, ?)', [req.user.id, req.body.user2, req.body.relationshipType], (err, results) => {
+    addUserRelationship: (req, res) => {
+        db.query('insert into user_relationships (user1, user2, type) values (?, ?, ?)', [req.user.user_id, req.body.user2, req.body.relationshipType], (err, results) => {
             if (err) {
                 console.log(err);
                 throw err;

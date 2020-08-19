@@ -14,17 +14,19 @@ const port = process.env.port || 3232;
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
+var sessionStore = new mysqlStore({
+    host: process.env.dbHost,
+    port: process.env.dbPort,
+    user: process.env.dbUser,
+    password: process.env.dbPass,
+    database: process.env.dbSchema
+})
+
 app.use(session({
     secret: 'alksjdvkla2432uoiuyaw4ouhtjlzh52',
     resave: false,
     saveUninitialized: false,
-    store: new mysqlStore({
-        host: process.env.dbHost,
-        port: process.env.dbPort,
-        user: process.env.dbUser,
-        password: process.env.dbPass,
-        database: process.env.dbSchema
-    }),
+    store: sessionStore,
     cookie: {secure: false}
 }));
 app.use(passport.initialize());
@@ -62,7 +64,7 @@ passport.serializeUser((user, done) => {
 
 passport.deserializeUser((id, done) => {
     console.log('Deserializing user...');
-    db.query('select * from users where id = ?', [id], (err, results) => {
+    db.query('select * from users where user_id = ?', [id], (err, results) => {
         if (err) {
             console.log('Deserialize query error: ' + err);
             throw err;

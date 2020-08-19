@@ -7,10 +7,12 @@ router.route('/')
     .get(isLoggedIn, controller.getUser)
     .post(controller.createUser);
 router.route('/login')
-    .post(passport.authenticate('local'), controller.loginUser)
+    .post(passport.authenticate('local'), controller.loginUser);
+router.route('/logout')
+    .post(isLoggedIn, controller.logoutUser)
 router.route('/relationships')
-    .get(isLoggedIn, controller.getFriends)
-    .post(isLoggedIn, controller.addRelationship);
+    .get(isLoggedIn, controller.getUserRelationships)
+    .post(isLoggedIn, controller.addUserRelationship);
 // router.route('/relationships/friends')
 //     .get(isLoggedIn)
 router.route('/endorsements')
@@ -18,7 +20,7 @@ router.route('/endorsements')
     .post(isLoggedIn, controller.addUserEndorsement)
     .delete(isLoggedIn, controller.removeUserEndorsement)
 router.route('/districts')
-    .get(controller.getUserDistricts);
+    .get(isLoggedIn, controller.getUserDistricts);
 
 function isLoggedIn (req, res, next) {
     if (req.isAuthenticated()) {
