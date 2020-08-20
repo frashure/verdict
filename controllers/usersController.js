@@ -234,12 +234,26 @@ const controller = {
     },
 
     addUserRelationship: (req, res) => {
-        db.query('insert into user_relationships (user1, user2, type) values (?, ?, ?)', [req.user.user_id, req.body.user2, req.body.relationshipType], (err, results) => {
+
+        let relationshipType2;
+        switch(req.body.relationshipType) {
+            case 'r': relationshipType2 = 'p';
+            break;
+
+        }
+
+        let insertValues = [
+            [req.user.user_id, req.body.user2, req.body.relationshipType],
+            [req.body.user2, req.user.user_id, relationshipType2]
+        ]
+        // TODO: [VER-13] Add check constraint to ensure user1 != user2
+        db.query('insert into user_relationships (user1, user2, type) values ?', [insertValues], (err, results) => {
             if (err) {
                 console.log(err);
                 throw err;
             }
             else {
+                console.log(results.affectedRows);
                 res.sendStatus(200);
             }
         })
