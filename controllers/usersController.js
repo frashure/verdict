@@ -78,7 +78,7 @@ const controller = {
 
     getUser: (req, res) => {
         console.log('User: ' + JSON.stringify(req.user));
-        db.query('select username, email from users where user_id = ?', [req.user.user_id], (err, results) => {
+        db.query('select user_id, email, first_name, last_name from users where user_id = ?', [req.user.user_id], (err, results) => {
             if (err) {
                 console.log(err);
                 throw err;
@@ -91,6 +91,18 @@ const controller = {
 
     postUser: (req, res) => {
         res.send("postUser route succeeded!");
+    },
+
+    addUserParty: (req, res) => {
+        db.query('update users set party = ? where user_id = ?', [req.body.partyId, req.user.user_id], (err, results) => {
+            if (err) {
+                console.log('Party add error: ' + err);
+            }
+            else {
+                console.log('Rows updated: ' + results.affectedRows);
+                res.sendStatus(200);
+            }
+        })
     },
 
     getUserDistricts: (req, res) => {
@@ -183,6 +195,45 @@ const controller = {
         })
     },
 
+    addUserRelationship: (req, res) => {
+
+        let relationshipType2;
+        switch(req.body.relationshipType) {
+            case 'p': relationshipType2 = 'r';
+            break;
+            case 'b': relationshipType2 = 'x';
+            break;
+
+        }
+
+        let insertValues = [
+            [req.user.user_id, req.body.user2, req.body.relationshipType],
+            [req.body.user2, req.user.user_id, relationshipType2]
+        ]
+        // TODO: [VER-13] Add check constraint to ensure user1 != user2
+        db.query('insert into user_relationships (user1, user2, type) values ?', [insertValues], (err, results) => {
+            if (err) {
+                console.log(err);
+                res.sendStatus(409);
+                // throw err;
+            }
+            else {
+                console.log(results.affectedRows);
+                res.sendStatus(200);
+            }
+        })
+    },
+
+    approveFriendRequest: (req, res) => {
+
+        let insertValues = [
+            [req.user.user_id, req.body.user2, 'r'],
+            [req.body.user2, req.user.user_id, 'p']
+        ]
+
+        // db.query('update user_relationships set type = f where user1 = ? and user 2 = ? and type = ?')
+    },
+
     getUserEndorsements: (req, res) => {
         db.query('select c.* from endorsements e join candidates c on e.candidate_id = c.candidate_id where e.user_id = ?', [req.user.user_id], (err, results) => {
             if (err) {
@@ -229,32 +280,6 @@ const controller = {
             }
             else {
                 res.json(results);
-            }
-        })
-    },
-
-    addUserRelationship: (req, res) => {
-
-        let relationshipType2;
-        switch(req.body.relationshipType) {
-            case 'r': relationshipType2 = 'p';
-            break;
-
-        }
-
-        let insertValues = [
-            [req.user.user_id, req.body.user2, req.body.relationshipType],
-            [req.body.user2, req.user.user_id, relationshipType2]
-        ]
-        // TODO: [VER-13] Add check constraint to ensure user1 != user2
-        db.query('insert into user_relationships (user1, user2, type) values ?', [insertValues], (err, results) => {
-            if (err) {
-                console.log(err);
-                throw err;
-            }
-            else {
-                console.log(results.affectedRows);
-                res.sendStatus(200);
             }
         })
     }

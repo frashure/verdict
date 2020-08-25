@@ -10,9 +10,12 @@ router.route('/login')
     .post(passport.authenticate('local'), controller.loginUser);
 router.route('/logout')
     .post(isLoggedIn, controller.logoutUser)
+router.route('/party')
+    .post(isLoggedIn, controller.addUserParty);
 router.route('/relationships')
     .get(isLoggedIn, controller.getUserRelationships)
-    .post(isLoggedIn, controller.addUserRelationship);
+    .post(isLoggedIn, controller.addUserRelationship)
+    .put(isLoggedIn, controller.approveFriendRequest);
 // router.route('/relationships/friends')
 //     .get(isLoggedIn)
 router.route('/endorsements')

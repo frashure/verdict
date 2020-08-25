@@ -377,4 +377,16 @@ BEGIN
 END$$
 
 
+USE `verdict`$$
+DROP TRIGGER IF EXISTS `verdict`.`user_relationships_BEFORE_INSERT` $$
+USE `verdict`$$
+CREATE DEFINER = CURRENT_USER TRIGGER `verdict`.`user_relationships_BEFORE_INSERT` BEFORE INSERT ON `user_relationships` FOR EACH ROW
+BEGIN
+	IF user1 = user2 THEN
+		SIGNAL SQLSTATE '23000'
+		SET MESSAGE_TEXT = 'User values must be distinct';
+    END IF;
+END$$
+
+
 DELIMITER ;

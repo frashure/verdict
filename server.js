@@ -50,7 +50,12 @@ passport.use('local', new LocalStrategy({
                 return done(null, false)
             }
             else {
-                return done(null, results[0]);
+
+                let user = {
+                    id: results[0].user_id
+                }
+
+                return done(null, user);
             }
         }
         )
@@ -59,7 +64,7 @@ passport.use('local', new LocalStrategy({
 
 passport.serializeUser((user, done) => {
     console.log('Serializing user...');
-    done(null, user.user_id);
+    done(null, user.id);
 });
 
 passport.deserializeUser((id, done) => {
